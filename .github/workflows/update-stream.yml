@@ -17,9 +17,14 @@ jobs:
 
       - name: Fetch and generate m3u8
         run: |
-          # Ambil URL sebenar dari header 'location' menggunakan curl
-          STREAM_URL=$(curl -sI "https://api.dani-dev.co.za/v2/stream/tonton/live/tv9" | grep -i "^location:" | tr -d '\r' | cut -d' ' -f2-)
+          # Ambil URL redirect secara terus menggunakan curl
+          STREAM_URL=$(curl -s -o /dev/null -w "%{redirect_url}" "https://api.dani-dev.co.za/v2/stream/tonton/live/tv9")
           
+          # Fallback jika redirect_url kosong, cuba cara grep header biasa
+          if [ -z "$STREAM_URL" ]; then
+            STREAM_URL=$(curl -sI "https://api.dani-dev.co.za/v2/stream/tonton/live/tv9" | grep -i "^location:" | tail -n 1 | tr -d '\r' | cut -d' ' -f2-)
+          fi
+
           if [ -z "$STREAM_URL" ]; then
             echo "Gagal mendapatkan URL stream!"
             exit 1
