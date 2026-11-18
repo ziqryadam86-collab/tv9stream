@@ -1,0 +1,44 @@
+name: Update TV9 Stream
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # Berjalan setiap 10 minit
+  workflow_dispatch: # Boleh run secara manual dari tab Actions
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch and generate m3u8
+        run: |
+          # Ambil URL sebenar dari header 'location' menggunakan curl
+          STREAM_URL=$(curl -sI "https://api.dani-dev.co.za/v2/stream/tonton/live/tv9" | grep -i "^location:" | tr -d '\r' | cut -d' ' -f2-)
+          
+          if [ -z "$STREAM_URL" ]; then
+            echo "Gagal mendapatkan URL stream!"
+            exit 1
+          fi
+
+          echo "URL ditemui: $STREAM_URL"
+
+          # Tulis ke fail tv9.m3u8
+          cat << EOF > tv9.m3u8
+          #EXTM3U
+          #EXT-X-STREAM-INF:BANDWIDTH=390000,CODECS="avc1.4d0015,mp4a.40.2",RESOLUTION=426x240
+          $STREAM_URL
+          EOF
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add tv9.m3u8
+          git commit -m "Auto-update TV9 stream link [skip ci]" || exit 0
+          git push
+          
